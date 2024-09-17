@@ -23,13 +23,16 @@
 #include <SFML/Audio.hpp>
 #include "steamaudiomanager.h"
 
+// Screen Size
 const int sW {1920};
 const int sH {1080};
 
+// Other trivial constants
 const float piVal {3.14159265358979323846};
 const float movementSpeed {300.f};
 const float radarSpeed {1500.f};
 
+// Keyboard input method 
 void InputMovement(sf::Vector2f& ballPos, float deltaTime) {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) ballPos.y -= movementSpeed * deltaTime;
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) ballPos.y += movementSpeed * deltaTime;
@@ -37,6 +40,7 @@ void InputMovement(sf::Vector2f& ballPos, float deltaTime) {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) ballPos.x -= movementSpeed * deltaTime;
 }
 
+// Focus shape modifier and color initialize
 void UpdateFocusShape(sf::VertexArray& shape, sf::Vector2f center, float radius, float startAngle, float endAngle, sf::Color color)
 {
     shape[0].position = center;
@@ -50,6 +54,7 @@ void UpdateFocusShape(sf::VertexArray& shape, sf::Vector2f center, float radius,
     }
 }
 
+// Radar circle action
 void UpdateRadarShape(sf::CircleShape& radarCircle, float& radarRadius, float maxRadarRadius, float deltaTime, bool& isRadarExpanding)
 {
     if (isRadarExpanding)
@@ -67,6 +72,7 @@ void UpdateRadarShape(sf::CircleShape& radarCircle, float& radarRadius, float ma
 
 int main()
 {
+    // Steam audio manager class call
     SteamAudioManager audioManager;
 
     if (!audioManager.Initialize())
@@ -82,9 +88,11 @@ int main()
     sourceSettings.flags = IPL_SIMULATIONFLAGS_DIRECT;
     iplSourceCreate(audioManager.GetContext(), &sourceSettings, &source);*/
 
+    // Sfml window initialization and frame limit
     sf::RenderWindow window(sf::VideoMode(sW, sH), "Audio Actor Test!");
     window.setFramerateLimit(144);
 
+    // Base clock and fps counter variables
     sf::Clock clock;
     float currentElapsedTime = 0.0f;
     int frameCount = 0;
@@ -94,6 +102,7 @@ int main()
 
     sf::Vector2f ballPos = {sW/2, sH/2};
 
+    // Sound buffer initialization and wave sound file load with sfml interface
     sf::SoundBuffer radarBuffer;
     if(!radarBuffer.loadFromFile("assets/audiofiles/radarSFX.wav"))
     {
@@ -120,6 +129,7 @@ int main()
     IPLfloat32* dataPtr = saData.data();
     saBuffer.data = &dataPtr;*/
 
+    // Sfml font load
     sf::Font font;
     if(!font.loadFromFile("assets/fonts/ARIAL.TTF"))
     {
@@ -127,10 +137,12 @@ int main()
         return -1;
     }
 
+    // Drawable shape colors definitions
     sf::Color circleColor(100, 100, 100);
     sf::Color focusColor(140, 10, 60);
     sf::Color radarColor(255, 255, 255, 30);
 
+    // Informative text
     sf::Text timeText;
     timeText.setFont(font);
     timeText.setCharacterSize(20);
@@ -155,10 +167,12 @@ int main()
     fpsText.setFillColor(sf::Color::White); 
     fpsText.setPosition(1750, 20);
 
+    // Main Actor shape
     sf::CircleShape circleShape(20.f);
     circleShape.setFillColor(circleColor);
     circleShape.setOrigin(20.f, 20.f);
 
+    // Focus shape vertex array variable declarations
     float outerRadius = 200.f;
     float maxRadius = 1000.f;
     float minRadius = 60.f;
@@ -168,6 +182,7 @@ int main()
 
     sf::VertexArray focusShape(sf::PrimitiveType::TriangleFan, segments);
 
+    // Radar shape
     float radarRadius = 10.f;
     float maxRadarRadius = 600.f;
     sf::CircleShape radarCircle(radarRadius);
@@ -177,6 +192,7 @@ int main()
 
     sf::Mouse mouse;
 
+    // ----------------- MAIN GAME LOOP ----------------------
     while(window.isOpen())
     {
         sf::Event event;
@@ -184,6 +200,7 @@ int main()
         {
             if(event.type == sf::Event::Closed)
                 window.close();
+            // Keyboard click event check and calls
             if(event.type == sf::Event::KeyPressed)
             {
                 if(event.key.code == sf::Keyboard::F)
@@ -196,6 +213,7 @@ int main()
             }
         }
 
+        // Delta time and frame per second calculation
         float deltaTime = clock.restart().asSeconds();
         frameCount++;
         currentElapsedTime += deltaTime;
@@ -207,6 +225,7 @@ int main()
             frameCount = 0;
         }
 
+        // Mouse position and angle calculation with main actor
         sf::Vector2i mousePos = mouse.getPosition(window);
 
         float mouseBallDistance = std::sqrt(std::pow(mousePos.x - ballPos.x, 2) + std::pow(mousePos.y - ballPos.y, 2));        
@@ -218,6 +237,7 @@ int main()
 
         float invertedNormalizedDistance = 1.0f - normalizedDistance;
 
+        // Focus shape sector width 
         outerRadius = minRadius + normalizedDistance * (maxRadius - minRadius);
 
         float minSectorWidth = 5.0f * (piVal / 180.0f);
@@ -227,20 +247,24 @@ int main()
         startAngle = focusRadian - (sectorWidth * 0.5f);
         endAngle = focusRadian + (sectorWidth * 0.5f);
 
+        // Defined method calls for every iteration
         InputMovement(ballPos, deltaTime);
         UpdateFocusShape(focusShape, (sf::Vector2f){ballPos}, outerRadius, startAngle, endAngle, focusColor);
         UpdateRadarShape(radarCircle, radarRadius, maxRadarRadius, deltaTime, isRadarExpanding);
 
         window.clear(sf::Color::Black);
 
+        // Screen text insert
         timeText.setString("Elapsed Time: " + std::to_string(currentElapsedTime));
         mousePosText.setString("Mouse Position: x = " + std::to_string(mousePos.x) + " y = " + std::to_string(mousePos.y));
         radianText.setString("Mouse Radian: " + std::to_string(focusRadian));
         fpsText.setString("FPS: " + std::to_string(fpsVal));
 
+        // Main actor position change
         circleShape.setPosition(ballPos);
         radarCircle.setPosition(ballPos);
 
+        // Sfml draw calls
         window.draw(focusShape);
         window.draw(radarCircle);
         window.draw(circleShape);
