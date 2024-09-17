@@ -77,6 +77,11 @@ int main()
 
     audioManager.DebugPrint();
 
+    /*IPLSource source;
+    IPLSourceSettings sourceSettings = {};
+    sourceSettings.flags = IPL_SIMULATIONFLAGS_DIRECT;
+    iplSourceCreate(audioManager.GetContext(), &sourceSettings, &source);*/
+
     sf::RenderWindow window(sf::VideoMode(sW, sH), "Audio Actor Test!");
     window.setFramerateLimit(144);
 
@@ -98,6 +103,22 @@ int main()
 
     sf::Sound radarSound(radarBuffer);
     radarSound.setVolume(100);
+
+    /*IPLAudioBuffer saBuffer;
+    saBuffer.numChannels = radarBuffer.getChannelCount();
+    saBuffer.numSamples = radarBuffer.getSampleCount();
+
+    std::vector<IPLfloat32> saData(saBuffer.numChannels * saBuffer.numSamples);
+
+    const sf::Int16* sfmlBufferData = radarBuffer.getSamples();
+
+    for(size_t i = 0; i < saBuffer.numChannels * saBuffer.numSamples; ++i)
+    {
+        saData[i] = static_cast<IPLfloat32>(sfmlBufferData[i] / 32768.0f);
+    }
+
+    IPLfloat32* dataPtr = saData.data();
+    saBuffer.data = &dataPtr;*/
 
     sf::Font font;
     if(!font.loadFromFile("assets/fonts/ARIAL.TTF"))
@@ -168,6 +189,7 @@ int main()
                 if(event.key.code == sf::Keyboard::F)
                 {
                     radarSound.play();
+                    std::cout << "Radar Pulse played." << std::endl;
                     isRadarExpanding = true;
                     radarRadius = 10.f;
                 }

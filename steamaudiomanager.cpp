@@ -101,3 +101,18 @@ void SteamAudioManager::DebugPrint() const
               << STEAMAUDIO_VERSION_MINOR << "."
               << STEAMAUDIO_VERSION_PATCH << std::endl;
 }
+
+/*IPLSource SteamAudioManager::CreateSource()
+{
+    // TO DO
+}
+
+IPLAudioBuffer SteamAudioManager::PlaySound(IPLSource source, const IPLAudioBuffer* buffer)
+{
+    // TO DO
+}
+
+void SteamAudioManager::UpdateSourcePosition(IPLSource source, const sf::Vector3f& position)
+{
+    // TO DO
+}*/
