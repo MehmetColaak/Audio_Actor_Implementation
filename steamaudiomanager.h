@@ -14,15 +14,11 @@ public:
     void CleanUp();
     void DebugPrint() const;
 
-    //IPLContext GetContext() const { return context; }
-
-    //IPLSource CreateSource();
-    //IPLAudioBuffer CreateAudioBuffer(const sf::Sound& sfmlBuffer);
-    //void PlaySound(IPLSource source, const sf::Vector3f& position);
+    IPLSource CreateSource();
 
 private:
     IPLContext context;
     IPLHRTF hrtf;
+    IPLSimulator simulator;
     IPLBinauralEffect binauralEffect;
-    //std::vector<IPLSource> sources;
 };

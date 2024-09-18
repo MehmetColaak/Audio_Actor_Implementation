@@ -1,6 +1,5 @@
 #include "steamaudiomanager.h"
 #include <iostream>
-#include <algorithm>
 
 SteamAudioManager::SteamAudioManager() : context(nullptr), hrtf(nullptr), binauralEffect(nullptr)
 {
@@ -23,7 +22,7 @@ bool SteamAudioManager::Initialize()
     IPLerror error = iplContextCreate(&contextSettings, &context);
     if(error != IPL_STATUS_SUCCESS)
     {
-        std::cerr << "Failed to create Steam Audio Context. Error code: " << error << std::endl;
+        std::cerr << "Failed to create Steam Audio Context." << std::endl;
         return false;
     }
     std::cout << "Steam Audio context initialized successfully" << std::endl;
@@ -37,12 +36,11 @@ bool SteamAudioManager::Initialize()
     std::cout << "Initializing HRTF..." << std::endl;
     IPLHRTFSettings hrtfSettings{};
     hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
-    hrtfSettings.volume = 1.0f;
 
     error = iplHRTFCreate(context, &audioSettings, &hrtfSettings, &hrtf);
     if (error != IPL_STATUS_SUCCESS)
     {
-        std::cerr << "Failed to create HRTF. Error code: " << error << std::endl;
+        std::cerr << "Failed to create HRTF." << std::endl;
         iplContextRelease(&context);
         return false;
     }
@@ -56,7 +54,7 @@ bool SteamAudioManager::Initialize()
     error = iplBinauralEffectCreate(context, &audioSettings, &effectSettings, &binauralEffect);
     if (error != IPL_STATUS_SUCCESS)
     {
-        std::cerr << "Failed to create binaural effect. Error code: " << error << std::endl;
+        std::cerr << "Failed to create binaural effect." << std::endl;
         iplHRTFRelease(&hrtf);
         iplContextRelease(&context);
         return false;
@@ -70,6 +68,12 @@ void SteamAudioManager::CleanUp()
 {
     std::cout << "Cleaning up Steam Audio..." << std::endl;
 
+    if(simulator)
+    {
+        iplSimulatorRelease(&simulator);
+        std::cout << "Simulator released" << std::endl;
+
+    }
     if (binauralEffect)
     {
         iplBinauralEffectRelease(&binauralEffect);
@@ -102,17 +106,17 @@ void SteamAudioManager::DebugPrint() const
               << STEAMAUDIO_VERSION_PATCH << std::endl;
 }
 
-/*IPLSource SteamAudioManager::CreateSource()
+IPLSource SteamAudioManager::CreateSource()
 {
-    // TO DO
-}
+    IPLSource source = nullptr;
+    IPLSourceSettings sourceSettings = {};
+    sourceSettings.flags = IPL_SIMULATIONFLAGS_DIRECT;
 
-IPLAudioBuffer SteamAudioManager::PlaySound(IPLSource source, const IPLAudioBuffer* buffer)
-{
-    // TO DO
+    IPLerror error = iplSourceCreate(simulator, &sourceSettings, &source);
+    if(error != IPL_STATUS_SUCCESS)
+    {
+        std::cerr << "Failed to create Steam Audio Source." << std::endl;
+        return nullptr;
+    }
+    return source;
 }
-
-void SteamAudioManager::UpdateSourcePosition(IPLSource source, const sf::Vector3f& position)
-{
-    // TO DO
-}*/

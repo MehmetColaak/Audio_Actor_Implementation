@@ -83,10 +83,16 @@ int main()
 
     audioManager.DebugPrint();
 
-    /*IPLSource source;
-    IPLSourceSettings sourceSettings = {};
-    sourceSettings.flags = IPL_SIMULATIONFLAGS_DIRECT;
-    iplSourceCreate(audioManager.GetContext(), &sourceSettings, &source);*/
+    // Sound buffer initialization and wave sound file load with sfml interface
+    sf::SoundBuffer radarBuffer;
+    if(!radarBuffer.loadFromFile("assets/audiofiles/radarSFX.wav"))
+    {
+        std::cerr << "Failed to load audio file." << std::endl;
+        return 1;
+    }
+
+    sf::Sound radarSound(radarBuffer);
+    radarSound.setVolume(100);
 
     // Sfml window initialization and frame limit
     sf::RenderWindow window(sf::VideoMode(sW, sH), "Audio Actor Test!");
@@ -101,33 +107,6 @@ int main()
     float fpsVal = 0.f;
 
     sf::Vector2f ballPos = {sW/2, sH/2};
-
-    // Sound buffer initialization and wave sound file load with sfml interface
-    sf::SoundBuffer radarBuffer;
-    if(!radarBuffer.loadFromFile("assets/audiofiles/radarSFX.wav"))
-    {
-        std::cerr << "Failed to load audio file." << std::endl;
-        return -1;
-    }
-
-    sf::Sound radarSound(radarBuffer);
-    radarSound.setVolume(100);
-
-    /*IPLAudioBuffer saBuffer;
-    saBuffer.numChannels = radarBuffer.getChannelCount();
-    saBuffer.numSamples = radarBuffer.getSampleCount();
-
-    std::vector<IPLfloat32> saData(saBuffer.numChannels * saBuffer.numSamples);
-
-    const sf::Int16* sfmlBufferData = radarBuffer.getSamples();
-
-    for(size_t i = 0; i < saBuffer.numChannels * saBuffer.numSamples; ++i)
-    {
-        saData[i] = static_cast<IPLfloat32>(sfmlBufferData[i] / 32768.0f);
-    }
-
-    IPLfloat32* dataPtr = saData.data();
-    saBuffer.data = &dataPtr;*/
 
     // Sfml font load
     sf::Font font;
