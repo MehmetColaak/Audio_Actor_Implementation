@@ -160,8 +160,6 @@ int main()
     float fpsUpdateInterval = 0.2f;
     float fpsVal = 0.f;
 
-    sf::Vector2f ballPos = {sW/2, sH/2};
-
     // Sfml font load
     sf::Font font;
     if(!font.loadFromFile("assets/fonts/ARIAL.TTF"))
@@ -201,6 +199,7 @@ int main()
     fpsText.setPosition(1750, 20);
 
     // Main Actor shape
+    sf::Vector2f ballPos = {sW/2, sH/2};
     sf::CircleShape circleShape(20.f);
     circleShape.setFillColor(circleColor);
     circleShape.setOrigin(20.f, 20.f);
