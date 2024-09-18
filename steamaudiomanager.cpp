@@ -1,3 +1,4 @@
+//---------------------OOP Interface for steam audio(not implemented fully yet)---------------------------
 #include "steamaudiomanager.h"
 #include <iostream>
 

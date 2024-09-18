@@ -21,7 +21,8 @@
 #include <cmath>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-#include "steamaudiomanager.h"
+#include <vector>
+#include "phonon.h"
 
 // Screen Size
 const int sW {1920};
@@ -72,16 +73,9 @@ void UpdateRadarShape(sf::CircleShape& radarCircle, float& radarRadius, float ma
 
 int main()
 {
-    // Steam audio manager class call
-    SteamAudioManager audioManager;
-
-    if (!audioManager.Initialize())
-    {
-        std::cerr << "Failed to initialize Steam Audio Manager" << std::endl;
-        return 1;
-    }
-
-    audioManager.DebugPrint();
+    // Sfml window initialization and frame limit
+    sf::RenderWindow window(sf::VideoMode(sW, sH), "Audio Actor Test!");
+    window.setFramerateLimit(144);
 
     // Sound buffer initialization and wave sound file load with sfml interface
     sf::SoundBuffer radarBuffer;
@@ -91,12 +85,83 @@ int main()
         return 1;
     }
 
+    std::vector<float> radarFloatBuffer;
+    radarFloatBuffer.reserve(radarBuffer.getSampleCount() * radarBuffer.getChannelCount());
+    for (size_t i = 0; i < radarBuffer.getSampleCount() * radarBuffer.getChannelCount(); ++i)
+    {
+        radarFloatBuffer.push_back(static_cast<float>(radarBuffer.getSamples()[i]) / 32767.f);
+    }
+
+    // ---------------------------------Steam Audio Implemantation Start(DRAFT)-----------------------------------------
+    
+    IPLContextSettings conSettings{};
+    conSettings.version = STEAMAUDIO_VERSION;
+    IPLContext context = nullptr;
+    iplContextCreate(&conSettings, &context);
+
+    IPLAudioBuffer saBuffer;
+    saBuffer.numChannels = 2;
+    saBuffer.numSamples = 512;
+    //saBuffer.data....
+
+    float leftChannel[512];
+    float rightChannel[512];
+    float* channels[2] = {leftChannel, rightChannel};
+
+    saBuffer.data = channels;
+
+    IPLAudioSettings audioSettings{};
+    audioSettings.samplingRate = 48000;
+    audioSettings.frameSize = 1024;
+
+    IPLHRTFSettings hrtfSettings{};
+    hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
+    hrtfSettings.volume = 1.0f;
+
+    IPLHRTF hrtf = nullptr;
+    iplHRTFCreate(context, &audioSettings, &hrtfSettings, &hrtf);
+
+    IPLBinauralEffectSettings effectSettings{};
+    effectSettings.hrtf = hrtf;
+
+    IPLBinauralEffect effect = nullptr;
+    iplBinauralEffectCreate(context, &audioSettings, &effectSettings, &effect);
+
+    std::vector<float> inputBuffer(radarFloatBuffer.begin(), radarFloatBuffer.end());
+    std::vector<float> outputBuffer(inputBuffer.size() * 2);
+
+    IPLAudioBuffer inBuffer{};
+    inBuffer.numChannels = 1;
+    inBuffer.numSamples = static_cast<int>(inputBuffer.size());
+    float* inData[] = { inputBuffer.data() };
+    inBuffer.data = inData;
+
+    IPLAudioBuffer outBuffer{};
+    iplAudioBufferAllocate(context, 2, inBuffer.numSamples, &outBuffer);
+
+    IPLBinauralEffectParams params{};
+    params.direction = IPLVector3{1.0f, 1.0f, 1.0f}; 
+    params.hrtf = hrtf;
+    params.interpolation = IPL_HRTFINTERPOLATION_NEAREST; 
+    params.spatialBlend = 1.0f; 
+    params.peakDelays = nullptr;
+
+    iplBinauralEffectApply(effect, &params, &inBuffer, &outBuffer);
+
+    iplAudioBufferInterleave(context, &outBuffer, &outputBuffer[0]);
+
+    sf::SoundBuffer processedBuffer;
+    std::vector<sf::Int16> processedInt16(outputBuffer.size());
+    for (size_t i = 0; i < outputBuffer.size(); ++i) {
+        processedInt16[i] = static_cast<sf::Int16>(outputBuffer[i] * 32767.f);
+    }
+    processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, 48000);
+    sf::Sound processedSound(processedBuffer);
+
+    // ---------------------------------Steam Audio Implemantation End(DRAFT)-----------------------------------------
+
     sf::Sound radarSound(radarBuffer);
     radarSound.setVolume(100);
-
-    // Sfml window initialization and frame limit
-    sf::RenderWindow window(sf::VideoMode(sW, sH), "Audio Actor Test!");
-    window.setFramerateLimit(144);
 
     // Base clock and fps counter variables
     sf::Clock clock;
@@ -184,7 +249,8 @@ int main()
             {
                 if(event.key.code == sf::Keyboard::F)
                 {
-                    radarSound.play();
+                    processedSound.play();
+                    //radarSound.play();
                     std::cout << "Radar Pulse played." << std::endl;
                     isRadarExpanding = true;
                     radarRadius = 10.f;
@@ -254,6 +320,11 @@ int main()
 
         window.display();
     }
+
+    iplAudioBufferFree(context, &outBuffer);
+    iplBinauralEffectRelease(&effect);
+    iplHRTFRelease(&hrtf);
+    iplContextRelease(&context);
 
     return 0;
 }
