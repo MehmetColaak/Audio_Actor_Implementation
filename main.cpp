@@ -99,17 +99,6 @@ int main()
     IPLContext context = nullptr;
     iplContextCreate(&conSettings, &context);
 
-    IPLAudioBuffer saBuffer;
-    saBuffer.numChannels = 2;
-    saBuffer.numSamples = 512;
-    //saBuffer.data....
-
-    float leftChannel[512];
-    float rightChannel[512];
-    float* channels[2] = {leftChannel, rightChannel};
-
-    saBuffer.data = channels;
-
     IPLAudioSettings audioSettings{};
     audioSettings.samplingRate = 48000;
     audioSettings.frameSize = 1024;
