@@ -84,6 +84,11 @@ int main()
         std::cerr << "Failed to load audio file." << std::endl;
         return 1;
     }
+    if (radarBuffer.getChannelCount() != 1) 
+    {
+    std::cerr << "Error: Sound file must be mono for binaural effect!" << std::endl;
+    }
+
 
     std::vector<float> radarFloatBuffer;
     radarFloatBuffer.reserve(radarBuffer.getSampleCount() * radarBuffer.getChannelCount());
@@ -100,8 +105,8 @@ int main()
     iplContextCreate(&conSettings, &context);
 
     IPLAudioSettings audioSettings{};
-    audioSettings.samplingRate = 48000;
-    audioSettings.frameSize = 1024;
+    audioSettings.samplingRate = 44100;
+    audioSettings.frameSize = 512;
 
     IPLHRTFSettings hrtfSettings{};
     hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
@@ -116,37 +121,49 @@ int main()
     IPLBinauralEffect effect = nullptr;
     iplBinauralEffectCreate(context, &audioSettings, &effectSettings, &effect);
 
-    std::vector<float> inputBuffer(radarFloatBuffer.begin(), radarFloatBuffer.end());
-    std::vector<float> outputBuffer(inputBuffer.size() * 2);
+    size_t totalSamples = radarFloatBuffer.size();
+    size_t frameSize = audioSettings.frameSize;
+    size_t numFrames = totalSamples / frameSize;
+
+    std::vector<float> inputBuffer(frameSize);
+    std::vector<float> outputBuffer(totalSamples * 2);
 
     IPLAudioBuffer inBuffer{};
     inBuffer.numChannels = 1;
-    inBuffer.numSamples = static_cast<int>(inputBuffer.size());
-    float* inData[] = { inputBuffer.data() };
-    inBuffer.data = inData;
 
     IPLAudioBuffer outBuffer{};
-    iplAudioBufferAllocate(context, 2, inBuffer.numSamples, &outBuffer);
+    iplAudioBufferAllocate(context, 2, frameSize, &outBuffer);
 
     IPLBinauralEffectParams params{};
-    params.direction = IPLVector3{1.0f, 1.0f, 1.0f}; 
+    params.direction = IPLVector3{1.0f, 0.0f, 1.0f}; 
     params.hrtf = hrtf;
-    params.interpolation = IPL_HRTFINTERPOLATION_NEAREST; 
+    params.interpolation = IPL_HRTFINTERPOLATION_BILINEAR; 
     params.spatialBlend = 1.0f; 
     params.peakDelays = nullptr;
 
-    iplBinauralEffectApply(effect, &params, &inBuffer, &outBuffer);
+    for (size_t frame = 0; frame < numFrames; ++frame)
+    {
+        std::copy(radarFloatBuffer.begin() + frame * frameSize, radarFloatBuffer.begin() + (frame + 1) * frameSize, inputBuffer.begin());
 
-    iplAudioBufferInterleave(context, &outBuffer, &outputBuffer[0]);
+        inBuffer.numSamples = frameSize;
+        float* inData[] = { inputBuffer.data() };
+        inBuffer.data = inData;
 
-    sf::SoundBuffer processedBuffer;
+        iplBinauralEffectApply(effect, &params, &inBuffer, &outBuffer);
+
+        iplAudioBufferInterleave(context, &outBuffer, outputBuffer.data() + frame * frameSize * 2);
+    }
+
     std::vector<sf::Int16> processedInt16(outputBuffer.size());
-    for (size_t i = 0; i < outputBuffer.size(); ++i) {
+    for (size_t i = 0; i < outputBuffer.size(); ++i) 
+    {
         processedInt16[i] = static_cast<sf::Int16>(outputBuffer[i] * 32767.f);
     }
-    processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, 48000);
-    sf::Sound processedSound(processedBuffer);
 
+    sf::SoundBuffer processedBuffer;
+    processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, audioSettings.samplingRate);
+    sf::Sound processedSound(processedBuffer);
+    processedSound.setVolume(100.0f); 
     // ---------------------------------Steam Audio Implemantation End(DRAFT)-----------------------------------------
 
     sf::Sound radarSound(radarBuffer);
@@ -269,6 +286,36 @@ int main()
         float normalizedDistance = std::min(mouseBallDistance, maxDistance) / maxDistance;
 
         float invertedNormalizedDistance = 1.0f - normalizedDistance;
+
+        //------------------------ STEAM AUDIO BINAURAL PARAMS ----------------
+        sf::Vector2f listenerPos = ballPos;  // Position of the main actor
+
+        // Calculate the direction vector from listener (main actor) to mouse position
+        sf::Vector2f directionVec = sf::Vector2f(mousePos.x - listenerPos.x, mousePos.y - listenerPos.y);
+
+        // Normalize the direction vector
+        float length = std::sqrt(directionVec.x * directionVec.x + directionVec.y * directionVec.y);
+        if (length != 0) 
+        {
+            directionVec /= length;
+        }
+
+        params.direction = { directionVec.x, 0.0f, directionVec.y };
+
+        // Process audio in frames (this part stays the same as before)
+        for (size_t frame = 0; frame < numFrames; ++frame)
+        {
+            std::copy(radarFloatBuffer.begin() + frame * frameSize, radarFloatBuffer.begin() + (frame + 1) * frameSize, inputBuffer.begin());
+
+            // Apply binaural effect with updated direction
+            inBuffer.numSamples = frameSize;
+            float* inData[] = { inputBuffer.data() };
+            inBuffer.data = inData;
+
+            iplBinauralEffectApply(effect, &params, &inBuffer, &outBuffer);
+            iplAudioBufferInterleave(context, &outBuffer, outputBuffer.data() + frame * frameSize * 2);
+        }
+        // ---------------------STEAM AUDIO BINAURAL PARAMS-------------------------
 
         // Focus shape sector width 
         outerRadius = minRadius + normalizedDistance * (maxRadius - minRadius);
