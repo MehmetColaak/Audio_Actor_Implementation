@@ -50,7 +50,7 @@
 
 *.json
 
-### Folders ###
-.assets/
-.sfml/
-.steamaudio/
+### Directories ###
+/.assets/
+/.sfml/
+/.steamaudio/
