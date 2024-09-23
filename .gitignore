@@ -51,6 +51,6 @@
 *.json
 
 ### Folders ###
-/assets
-/sfml
-/steamaudio
+assets/
+.sfml/
+.steamaudio/
