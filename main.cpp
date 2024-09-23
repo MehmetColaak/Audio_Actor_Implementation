@@ -287,36 +287,6 @@ int main()
 
         float invertedNormalizedDistance = 1.0f - normalizedDistance;
 
-        //------------------------ STEAM AUDIO BINAURAL PARAMS ----------------
-        sf::Vector2f listenerPos = ballPos;  // Position of the main actor
-
-        // Calculate the direction vector from listener (main actor) to mouse position
-        sf::Vector2f directionVec = sf::Vector2f(mousePos.x - listenerPos.x, mousePos.y - listenerPos.y);
-
-        // Normalize the direction vector
-        float length = std::sqrt(directionVec.x * directionVec.x + directionVec.y * directionVec.y);
-        if (length != 0) 
-        {
-            directionVec /= length;
-        }
-
-        params.direction = { directionVec.x, 0.0f, directionVec.y };
-
-        // Process audio in frames (this part stays the same as before)
-        for (size_t frame = 0; frame < numFrames; ++frame)
-        {
-            std::copy(radarFloatBuffer.begin() + frame * frameSize, radarFloatBuffer.begin() + (frame + 1) * frameSize, inputBuffer.begin());
-
-            // Apply binaural effect with updated direction
-            inBuffer.numSamples = frameSize;
-            float* inData[] = { inputBuffer.data() };
-            inBuffer.data = inData;
-
-            iplBinauralEffectApply(effect, &params, &inBuffer, &outBuffer);
-            iplAudioBufferInterleave(context, &outBuffer, outputBuffer.data() + frame * frameSize * 2);
-        }
-        // ---------------------STEAM AUDIO BINAURAL PARAMS-------------------------
-
         // Focus shape sector width 
         outerRadius = minRadius + normalizedDistance * (maxRadius - minRadius);
 
