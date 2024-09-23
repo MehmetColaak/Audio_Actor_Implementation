@@ -51,8 +51,8 @@
 *.json
 
 ### Directories ###
-/assets/
-/sfml/
-/steamaudio/
+**/assets/
+**/sfml/
+**/steamaudio/
 
-/.vscode/
+**/.vscode/
