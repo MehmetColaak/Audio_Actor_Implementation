@@ -62,6 +62,11 @@ void UpdateRadarShape(sf::CircleShape& radarCircle, float& radarRadius, float ma
     if (isRadarExpanding)
     {
         radarRadius += radarSpeed * deltaTime;
+        float alphaPercentage = 1.0f - (radarRadius / maxRadarRadius);
+        int alpha = static_cast<int>(255 * alphaPercentage);
+        alpha = std::max(0, std::min(50, alpha));
+        radarCircle.setFillColor(sf::Color(255, 255, 255, alpha));
+
         if (radarRadius >= maxRadarRadius)
         {
             isRadarExpanding = false;
@@ -204,7 +209,6 @@ int main()
     // Drawable shape colors definitions
     sf::Color circleColor(100, 100, 100);
     sf::Color focusColor(140, 10, 60);
-    sf::Color radarColor(255, 255, 255, 30);
 
     // Informative text
     sf::Text timeText;
@@ -251,7 +255,6 @@ int main()
     float radarRadius = 10.f;
     float maxRadarRadius = 600.f;
     sf::CircleShape radarCircle(radarRadius);
-    radarCircle.setFillColor(radarColor);
     radarCircle.setOrigin(radarRadius, radarRadius);
     bool isRadarExpanding = false;
 
