@@ -256,10 +256,11 @@ int main()
     bool isRadarExpanding = false;
 
     // Perlin background grid
-    int gCols = 192;
-    int gRows = 108;
+    int gridReso = 20;
+    int gCols = sW / gridReso;
+    int gRows = sH / gridReso;
     std::vector<float> rotationAngles(gCols * gRows);
-    sf::VertexArray gridShape(sf::PrimitiveType::Points, 10);
+    sf::VertexArray gridShape(sf::PrimitiveType::Points, gridReso);
 
     // Perlin Noise initialize
     siv::PerlinNoise perlin;
