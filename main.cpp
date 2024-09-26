@@ -51,7 +51,7 @@ void UpdateFocusShape(sf::VertexArray& shape, sf::Vector2f center, float radius,
     {
         float angle = startAngle + (endAngle - startAngle) * (i - 1) / (shape.getVertexCount() - 2);
         shape[i].position = center + sf::Vector2f(std::cos(angle) * radius, std::sin(angle) * radius);
-        shape[i].color = sf::Color::Black;
+        shape[i].color = sf::Color(0, 0, 0, 0);
     }
 }
 
@@ -68,6 +68,24 @@ void UpdateRadarShape(sf::CircleShape& radarCircle, float& radarRadius, float ma
         }
         radarCircle.setRadius(radarRadius);
         radarCircle.setOrigin(radarRadius, radarRadius);
+    }
+}
+
+// Focus shape modifier and color initialize
+void DrawGridInstance(sf::VertexArray& shape, sf::Vector2f center, float rotationAngle)
+{
+    sf::Transform transform;
+    shape[0].position = center;
+    transform.rotate(rotationAngle, center);
+
+    for(size_t i = 1; i < shape.getVertexCount(); ++i)
+    {
+        // if(currentCol < gCols) currentCol++;
+        // if(currentRow < gRows) currentRow++;
+    
+        shape[i].position = transform.transformPoint(sf::Vector2f(center.x, center.y + i));
+        shape[i].color = sf::Color::White;
+        
     }
 }
 
@@ -239,6 +257,12 @@ int main()
     radarCircle.setOrigin(radarRadius, radarRadius);
     bool isRadarExpanding = false;
 
+    // Dynamic background grid
+    int gCols = 192;
+    int gRows = 108;
+    int rotationAngle = 45;
+    sf::VertexArray gridShape(sf::PrimitiveType::Points, 10);
+    
     sf::Mouse mouse;
 
     // ----------------- MAIN GAME LOOP ----------------------
@@ -303,6 +327,17 @@ int main()
         UpdateRadarShape(radarCircle, radarRadius, maxRadarRadius, deltaTime, isRadarExpanding);
 
         window.clear(sf::Color::Black);
+
+        // Building grid;
+        for(int y = 0; y < gRows; ++y)
+        {
+            for(int x = 0; x < gCols; ++x)
+            {
+            
+            DrawGridInstance(gridShape, sf::Vector2f(5 + (sW / gCols) * x, 5 + (sH / gRows) * y), rotationAngle);
+            window.draw(gridShape);
+            }
+        }
 
         // Screen text insert
         timeText.setString("Elapsed Time: " + std::to_string(currentElapsedTime));
