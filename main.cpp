@@ -21,8 +21,9 @@
 #include <cmath>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-#include <vector>
+#include <vector> 
 #include "phonon.h"
+#include "PerlinNoise.hpp"
 
 // Screen Size
 const int sW {1920};
@@ -76,16 +77,13 @@ void DrawGridInstance(sf::VertexArray& shape, sf::Vector2f center, float rotatio
 {
     sf::Transform transform;
     shape[0].position = center;
+    shape[0].color = sf::Color(255, 25, 255, 30);
     transform.rotate(rotationAngle, center);
 
     for(size_t i = 1; i < shape.getVertexCount(); ++i)
-    {
-        // if(currentCol < gCols) currentCol++;
-        // if(currentRow < gRows) currentRow++;
-    
+    {    
         shape[i].position = transform.transformPoint(sf::Vector2f(center.x, center.y + i));
-        shape[i].color = sf::Color::White;
-        
+        shape[i].color = sf::Color(255, 255, 255, 30);   
     }
 }
 
@@ -93,7 +91,7 @@ int main()
 {
     // Sfml window initialization and frame limit
     sf::RenderWindow window(sf::VideoMode(sW, sH), "Audio Actor Test!");
-    window.setFramerateLimit(144);
+    window.setFramerateLimit(60);
 
     // Sound buffer initialization and wave sound file load with sfml interface
     sf::SoundBuffer radarBuffer;
@@ -257,12 +255,32 @@ int main()
     radarCircle.setOrigin(radarRadius, radarRadius);
     bool isRadarExpanding = false;
 
-    // Dynamic background grid
+    // Perlin background grid
     int gCols = 192;
     int gRows = 108;
-    int rotationAngle = 45;
+    std::vector<float> rotationAngles(gCols * gRows);
     sf::VertexArray gridShape(sf::PrimitiveType::Points, 10);
-    
+
+    // Perlin Noise initialize
+    siv::PerlinNoise perlin;
+    double scale = 0.01;
+
+    for (int y = 0; y < gRows; ++y)
+    {
+        for (int x = 0; x < gCols; ++x)
+        {
+            // Sample from the Perlin noise
+            double noiseValue = perlin.noise2D(x * scale, y * scale);  // Get Perlin noise for (x, y)
+
+            // Map noise value from [-1, 1] to [0, 1]
+            noiseValue = (noiseValue + 1.0) / 2.0;
+
+            // Map noise value to a rotation angle [0, 360] degrees
+            int index = y * gCols + x;
+            rotationAngles[index] = noiseValue * 360.0;
+        }
+    }
+
     sf::Mouse mouse;
 
     // ----------------- MAIN GAME LOOP ----------------------
@@ -306,6 +324,7 @@ int main()
         float maxDistance = 800.f;
 
         float focusRadian = std::atan2f(mousePos.y - ballPos.y, mousePos.x - ballPos.x);
+        float focusDegree = (focusRadian * 180) / piVal;
 
         float normalizedDistance = std::min(mouseBallDistance, maxDistance) / maxDistance;
 
@@ -333,16 +352,20 @@ int main()
         {
             for(int x = 0; x < gCols; ++x)
             {
-            
-            DrawGridInstance(gridShape, sf::Vector2f(5 + (sW / gCols) * x, 5 + (sH / gRows) * y), rotationAngle);
-            window.draw(gridShape);
+                int index = y * gCols + x;
+                float rotationAngle = rotationAngles[index];
+
+                sf::Vector2f cellCenter(5 + (sW / gCols) * x, 5 + (sH / gRows) * y);
+
+                DrawGridInstance(gridShape, cellCenter, rotationAngle + focusDegree);
+                window.draw(gridShape);
             }
         }
 
         // Screen text insert
         timeText.setString("Elapsed Time: " + std::to_string(currentElapsedTime));
         mousePosText.setString("Mouse Position: x = " + std::to_string(mousePos.x) + " y = " + std::to_string(mousePos.y));
-        radianText.setString("Mouse Radian: " + std::to_string(focusRadian));
+        radianText.setString("Mouse Radian: " + std::to_string(focusRadian) + " Focus Degree = " + std::to_string(focusDegree));
         fpsText.setString("FPS: " + std::to_string(fpsVal));
 
         // Main actor position change
