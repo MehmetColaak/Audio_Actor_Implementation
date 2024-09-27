@@ -80,15 +80,16 @@ void UpdateRadarShape(sf::CircleShape& radarCircle, float& radarRadius, float ma
 // Focus shape modifier and color initialize
 void DrawGridInstance(sf::VertexArray& shape, sf::Vector2f center, float rotationAngle)
 {
+    sf::Color gridColor = sf::Color(255, 255, 255, 100);
     sf::Transform transform;
     shape[0].position = center;
-    shape[0].color = sf::Color(255, 25, 255, 30);
+    shape[0].color = gridColor;
     transform.rotate(rotationAngle, center);
 
     for(size_t i = 1; i < shape.getVertexCount(); ++i)
     {    
         shape[i].position = transform.transformPoint(sf::Vector2f(center.x, center.y + i));
-        shape[i].color = sf::Color(255, 255, 255, 30);   
+        shape[i].color = gridColor;   
     }
 }
 
@@ -119,15 +120,15 @@ int main()
     }
 
     // ---------------------------------Steam Audio Implemantation Start(DRAFT)-----------------------------------------
-    
-    IPLContextSettings conSettings{};
-    conSettings.version = STEAMAUDIO_VERSION;
+    // Steam Audio initialization
+    IPLContextSettings contextSettings{};
+    contextSettings.version = STEAMAUDIO_VERSION;
     IPLContext context = nullptr;
-    iplContextCreate(&conSettings, &context);
+    iplContextCreate(&contextSettings, &context);
 
     IPLAudioSettings audioSettings{};
     audioSettings.samplingRate = 44100;
-    audioSettings.frameSize = 512;
+    audioSettings.frameSize = 1024;
 
     IPLHRTFSettings hrtfSettings{};
     hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
@@ -142,39 +143,37 @@ int main()
     IPLBinauralEffect effect = nullptr;
     iplBinauralEffectCreate(context, &audioSettings, &effectSettings, &effect);
 
-    size_t totalSamples = radarFloatBuffer.size();
-    size_t frameSize = audioSettings.frameSize;
-    size_t numFrames = totalSamples / frameSize;
-
-    std::vector<float> inputBuffer(frameSize);
-    std::vector<float> outputBuffer(totalSamples * 2);
+    // Prepare audio buffers
+    std::vector<float> inputBuffer(radarFloatBuffer.begin(), radarFloatBuffer.end());
+    std::vector<float> outputBuffer(inputBuffer.size() * 2);  // Stereo output
 
     IPLAudioBuffer inBuffer{};
     inBuffer.numChannels = 1;
+    inBuffer.numSamples = audioSettings.frameSize;
+    float* inData[] = { inputBuffer.data() };
+    inBuffer.data = inData;
 
     IPLAudioBuffer outBuffer{};
-    iplAudioBufferAllocate(context, 2, frameSize, &outBuffer);
+    iplAudioBufferAllocate(context, 2, audioSettings.frameSize, &outBuffer);
 
-    IPLBinauralEffectParams params{};
-    params.direction = IPLVector3{1.0f, 0.0f, 1.0f}; 
-    params.hrtf = hrtf;
-    params.interpolation = IPL_HRTFINTERPOLATION_BILINEAR; 
-    params.spatialBlend = 1.0f; 
-    params.peakDelays = nullptr;
-
+    // Process audio
+    size_t numFrames = inputBuffer.size() / audioSettings.frameSize;
     for (size_t frame = 0; frame < numFrames; ++frame)
     {
-        std::copy(radarFloatBuffer.begin() + frame * frameSize, radarFloatBuffer.begin() + (frame + 1) * frameSize, inputBuffer.begin());
-
-        inBuffer.numSamples = frameSize;
-        float* inData[] = { inputBuffer.data() };
-        inBuffer.data = inData;
+        IPLBinauralEffectParams params{};
+        params.direction = IPLVector3{1.0f, 0.0f, 0.0f};  // Adjust as needed
+        params.hrtf = hrtf;
+        params.interpolation = IPL_HRTFINTERPOLATION_NEAREST;
+        params.spatialBlend = 1.0f;
 
         iplBinauralEffectApply(effect, &params, &inBuffer, &outBuffer);
 
-        iplAudioBufferInterleave(context, &outBuffer, outputBuffer.data() + frame * frameSize * 2);
+        iplAudioBufferInterleave(context, &outBuffer, outputBuffer.data() + frame * audioSettings.frameSize * 2);
+
+        inData[0] += audioSettings.frameSize;
     }
 
+    // Convert back to SFML format
     std::vector<sf::Int16> processedInt16(outputBuffer.size());
     for (size_t i = 0; i < outputBuffer.size(); ++i) 
     {
@@ -182,9 +181,11 @@ int main()
     }
 
     sf::SoundBuffer processedBuffer;
+
     processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, audioSettings.samplingRate);
+
     sf::Sound processedSound(processedBuffer);
-    processedSound.setVolume(100.0f); 
+    processedSound.setVolume(100.0f);
     // ---------------------------------Steam Audio Implemantation End(DRAFT)-----------------------------------------
 
     sf::Sound radarSound(radarBuffer);
@@ -267,7 +268,7 @@ int main()
 
     // Perlin Noise initialize
     siv::PerlinNoise perlin;
-    double scale = 0.01;
+    double scale = 0.05;
 
     for (int y = 0; y < gRows; ++y)
     {
@@ -302,7 +303,14 @@ int main()
                 {
                     processedSound.play();
                     //radarSound.play();
-                    std::cout << "Radar Pulse played." << std::endl;
+                    std::cout << "Spatialized Radar Pulse played." << std::endl;
+                    isRadarExpanding = true;
+                    radarRadius = 10.f;
+                }
+                if(event.key.code == sf::Keyboard::Space)
+                {
+                    radarSound.play();
+                    std::cout << "Non-Spatialized Radar Pulse played." << std::endl;
                     isRadarExpanding = true;
                     radarRadius = 10.f;
                 }
@@ -359,7 +367,7 @@ int main()
                 int index = y * gCols + x;
                 float rotationAngle = rotationAngles[index];
 
-                sf::Vector2f cellCenter(5 + (sW / gCols) * x, 5 + (sH / gRows) * y);
+                sf::Vector2f cellCenter(4 + (sW / gCols) * x, 4 + (sH / gRows) * y);
 
                 DrawGridInstance(gridShape, cellCenter, rotationAngle + focusDegree);
                 window.draw(gridShape);
