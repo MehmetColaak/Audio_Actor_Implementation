@@ -111,6 +111,7 @@ int main()
     std::cerr << "Error: Sound file must be mono for binaural effect!" << std::endl;
     }
 
+    sf::Sound radarSound(radarBuffer);
 
     std::vector<float> radarFloatBuffer;
     radarFloatBuffer.reserve(radarBuffer.getSampleCount() * radarBuffer.getChannelCount());
@@ -161,7 +162,7 @@ int main()
     for (size_t frame = 0; frame < numFrames; ++frame)
     {
         IPLBinauralEffectParams params{};
-        params.direction = IPLVector3{1.0f, 0.0f, 0.0f};  // Adjust as needed
+        params.direction = IPLVector3{-1.0f, 0.0f, 0.0f}; 
         params.hrtf = hrtf;
         params.interpolation = IPL_HRTFINTERPOLATION_NEAREST;
         params.spatialBlend = 1.0f;
@@ -185,11 +186,7 @@ int main()
     processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, audioSettings.samplingRate);
 
     sf::Sound processedSound(processedBuffer);
-    processedSound.setVolume(100.0f);
     // ---------------------------------Steam Audio Implemantation End(DRAFT)-----------------------------------------
-
-    sf::Sound radarSound(radarBuffer);
-    radarSound.setVolume(100);
 
     // Base clock and fps counter variables
     sf::Clock clock;
@@ -275,7 +272,7 @@ int main()
         for (int x = 0; x < gCols; ++x)
         {
             // Sample from the Perlin noise
-            double noiseValue = perlin.noise2D(x * scale, y * scale);  // Get Perlin noise for (x, y)
+            double noiseValue = perlin.noise2D(x * scale, y * scale);
 
             // Map noise value from [-1, 1] to [0, 1]
             noiseValue = (noiseValue + 1.0) / 2.0;
