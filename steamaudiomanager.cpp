@@ -62,10 +62,11 @@ void SteamAudioManager::CleanUp()
     }
     if(context)
     {
+        iplAudioBufferFree(context, &outBuffer);
         iplContextRelease(&context);
         context = nullptr;
         std::cout << "Steam Audio context destroyed" << std::endl;
-    }
+    } 
     else
     {
         std::cout << "No Steam Audio context to clean up" << std::endl;
@@ -97,7 +98,7 @@ IPLSource SteamAudioManager::CreateSource()
     return source;
 }
 
-std::vector<float> SteamAudioManager::ProcessAudio(std::vector<float>& vectorBuffer)
+std::vector<float> SteamAudioManager::ProcessAudio(std::vector<float>& vectorBuffer, IPLVector3& dirVector)
 {
     // Prepare audio buffers
     std::vector<float> inputBuffer(vectorBuffer.begin(), vectorBuffer.end());
@@ -114,7 +115,7 @@ std::vector<float> SteamAudioManager::ProcessAudio(std::vector<float>& vectorBuf
     for (size_t frame = 0; frame < numFrames; ++frame)
     {
         IPLBinauralEffectParams params{};
-        params.direction = IPLVector3{-1.0f, 0.0f, 0.0f}; 
+        params.direction = dirVector; 
         params.hrtf = hrtf;
         params.interpolation = IPL_HRTFINTERPOLATION_NEAREST;
         params.spatialBlend = 1.0f;

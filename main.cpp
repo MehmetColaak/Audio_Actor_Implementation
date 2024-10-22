@@ -121,28 +121,14 @@ int main()
         radarFloatBuffer.push_back(static_cast<float>(radarBuffer.getSamples()[i]) / 32767.f);
     }
 
+    // Steam Audio Inıtialize
     SteamAudioManager steamAudio;
     steamAudio.Initialize();
     steamAudio.DebugPrint();
-    std::vector<float> outputBuffer = steamAudio.ProcessAudio(radarFloatBuffer);
-
-    // Convert back to SFML format
-    std::vector<sf::Int16> processedInt16(outputBuffer.size());
-    for (size_t i = 0; i < outputBuffer.size(); ++i) 
-    {
-        processedInt16[i] = static_cast<sf::Int16>(outputBuffer[i] * 32767.f);
-    }
-
-    sf::SoundBuffer processedBuffer;
 
     IPLAudioSettings audioSettings{};
     audioSettings.samplingRate = 44100;
     audioSettings.frameSize = 512;
-
-    processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, audioSettings.samplingRate);
-
-    sf::Sound processedSound(processedBuffer);
-
 
     // Base clock and fps counter variables
     sf::Clock clock;
@@ -165,23 +151,13 @@ int main()
     sf::Color focusColor(140, 10, 60);
 
     // Informative text
-    sf::Text timeText;
-    timeText.setFont(font);
-    timeText.setCharacterSize(20);
-    timeText.setFillColor(sf::Color::White);
-    timeText.setPosition(20, 20);
 
     sf::Text mousePosText;
     mousePosText.setFont(font);
     mousePosText.setCharacterSize(20);
     mousePosText.setFillColor(sf::Color::White);
-    mousePosText.setPosition(20, 50);
+    mousePosText.setPosition(20, 20);
 
-    sf::Text radianText;
-    radianText.setFont(font);
-    radianText.setCharacterSize(20);
-    radianText.setFillColor(sf::Color::White);
-    radianText.setPosition(20, 80);
 
     sf::Text fpsText;
     fpsText.setFont(font);
@@ -244,6 +220,23 @@ int main()
     // ----------------- MAIN GAME LOOP ----------------------
     while(window.isOpen())
     {
+        sf::Vector2i mousePosINT = mouse.getPosition(window);
+        IPLVector3 dirVector = {(float)mousePosINT.x, 0, (float)mousePosINT.y};
+        std::vector<float> outputBuffer = steamAudio.ProcessAudio(radarFloatBuffer, dirVector);
+
+        // Convert back to SFML format
+        std::vector<sf::Int16> processedInt16(outputBuffer.size());
+        for (size_t i = 0; i < outputBuffer.size(); ++i) 
+        {
+            processedInt16[i] = static_cast<sf::Int16>(outputBuffer[i] * 32767.f);
+        }
+
+        sf::SoundBuffer processedBuffer;
+
+        processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, audioSettings.samplingRate);
+
+        sf::Sound processedSound(processedBuffer);
+
         sf::Event event;
         while(window.pollEvent(event))
         {
@@ -328,9 +321,7 @@ int main()
         }
 
         // Screen text insert
-        timeText.setString("Elapsed Time: " + std::to_string(currentElapsedTime));
         mousePosText.setString("Mouse Position: x = " + std::to_string(mousePos.x) + " y = " + std::to_string(mousePos.y));
-        radianText.setString("Mouse Radian: " + std::to_string(focusRadian) + " Focus Degree = " + std::to_string(focusDegree));
         fpsText.setString("FPS: " + std::to_string(fpsVal));
 
         // Main actor position change
@@ -341,18 +332,12 @@ int main()
         window.draw(focusShape);
         window.draw(radarCircle);
         window.draw(circleShape);
-        window.draw(timeText);
         window.draw(mousePosText);
-        window.draw(radianText);
         window.draw(fpsText);
 
         window.display();
     }
 
-    // iplAudioBufferFree(context, &outBuffer);
-    // iplBinauralEffectRelease(&effect);
-    // iplHRTFRelease(&hrtf);
-    // iplContextRelease(&context);
     steamAudio.CleanUp();
 
     return 0;

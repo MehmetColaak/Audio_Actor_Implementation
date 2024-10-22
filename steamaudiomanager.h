@@ -16,7 +16,7 @@ public:
     void DebugPrint() const;
 
     IPLSource CreateSource();
-    std::vector<float> ProcessAudio(std::vector<float>& vectorBuffer);
+    std::vector<float> ProcessAudio(std::vector<float>& vectorBuffer, IPLVector3& dirVector);
 
 private:
     IPLContext context;
