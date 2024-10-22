@@ -21,8 +21,9 @@
 #include <cmath>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-#include <vector> 
+#include <vector>
 #include "phonon.h"
+#include "steamaudiomanager.h"
 #include "PerlinNoise.hpp"
 
 // Screen Size
@@ -120,59 +121,10 @@ int main()
         radarFloatBuffer.push_back(static_cast<float>(radarBuffer.getSamples()[i]) / 32767.f);
     }
 
-    // ---------------------------------Steam Audio Implemantation Start(DRAFT)-----------------------------------------
-    // Steam Audio initialization
-    IPLContextSettings contextSettings{};
-    contextSettings.version = STEAMAUDIO_VERSION;
-    IPLContext context = nullptr;
-    iplContextCreate(&contextSettings, &context);
-
-    IPLAudioSettings audioSettings{};
-    audioSettings.samplingRate = 44100;
-    audioSettings.frameSize = 1024;
-
-    IPLHRTFSettings hrtfSettings{};
-    hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
-    hrtfSettings.volume = 1.0f;
-
-    IPLHRTF hrtf = nullptr;
-    iplHRTFCreate(context, &audioSettings, &hrtfSettings, &hrtf);
-
-    IPLBinauralEffectSettings effectSettings{};
-    effectSettings.hrtf = hrtf;
-
-    IPLBinauralEffect effect = nullptr;
-    iplBinauralEffectCreate(context, &audioSettings, &effectSettings, &effect);
-
-    // Prepare audio buffers
-    std::vector<float> inputBuffer(radarFloatBuffer.begin(), radarFloatBuffer.end());
-    std::vector<float> outputBuffer(inputBuffer.size() * 2);  // Stereo output
-
-    IPLAudioBuffer inBuffer{};
-    inBuffer.numChannels = 1;
-    inBuffer.numSamples = audioSettings.frameSize;
-    float* inData[] = { inputBuffer.data() };
-    inBuffer.data = inData;
-
-    IPLAudioBuffer outBuffer{};
-    iplAudioBufferAllocate(context, 2, audioSettings.frameSize, &outBuffer);
-
-    // Process audio
-    size_t numFrames = inputBuffer.size() / audioSettings.frameSize;
-    for (size_t frame = 0; frame < numFrames; ++frame)
-    {
-        IPLBinauralEffectParams params{};
-        params.direction = IPLVector3{-1.0f, 0.0f, 0.0f}; 
-        params.hrtf = hrtf;
-        params.interpolation = IPL_HRTFINTERPOLATION_NEAREST;
-        params.spatialBlend = 1.0f;
-
-        iplBinauralEffectApply(effect, &params, &inBuffer, &outBuffer);
-
-        iplAudioBufferInterleave(context, &outBuffer, outputBuffer.data() + frame * audioSettings.frameSize * 2);
-
-        inData[0] += audioSettings.frameSize;
-    }
+    SteamAudioManager steamAudio;
+    steamAudio.Initialize();
+    steamAudio.DebugPrint();
+    std::vector<float> outputBuffer = steamAudio.ProcessAudio(radarFloatBuffer);
 
     // Convert back to SFML format
     std::vector<sf::Int16> processedInt16(outputBuffer.size());
@@ -183,10 +135,14 @@ int main()
 
     sf::SoundBuffer processedBuffer;
 
+    IPLAudioSettings audioSettings{};
+    audioSettings.samplingRate = 44100;
+    audioSettings.frameSize = 512;
+
     processedBuffer.loadFromSamples(processedInt16.data(), processedInt16.size(), 2, audioSettings.samplingRate);
 
     sf::Sound processedSound(processedBuffer);
-    // ---------------------------------Steam Audio Implemantation End(DRAFT)-----------------------------------------
+
 
     // Base clock and fps counter variables
     sf::Clock clock;
@@ -393,10 +349,11 @@ int main()
         window.display();
     }
 
-    iplAudioBufferFree(context, &outBuffer);
-    iplBinauralEffectRelease(&effect);
-    iplHRTFRelease(&hrtf);
-    iplContextRelease(&context);
+    // iplAudioBufferFree(context, &outBuffer);
+    // iplBinauralEffectRelease(&effect);
+    // iplHRTFRelease(&hrtf);
+    // iplContextRelease(&context);
+    steamAudio.CleanUp();
 
     return 0;
 }

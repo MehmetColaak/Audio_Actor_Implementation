@@ -4,7 +4,7 @@ LDFLAGS = -Lsfml/lib -Lsteamaudio/lib/windows-x64
 LIBS = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lphonon
 TARGET = sfml_steamaudio_test
 
-SRCS = main.cpp #steamaudiomanager.cpp
+SRCS = main.cpp steamaudiomanager.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 all: $(TARGET)

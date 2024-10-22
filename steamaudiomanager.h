@@ -11,15 +11,23 @@ public:
     SteamAudioManager();
     ~SteamAudioManager();
 
-    bool Initialize();
+    void Initialize();
     void CleanUp();
     void DebugPrint() const;
 
     IPLSource CreateSource();
+    std::vector<float> ProcessAudio(std::vector<float>& vectorBuffer);
 
 private:
     IPLContext context;
+    IPLContextSettings contextSettings;
+    IPLAudioSettings audioSettings;
     IPLHRTF hrtf;
+    IPLHRTFSettings hrtfSettings;
     IPLSimulator simulator;
     IPLBinauralEffect binauralEffect;
+    IPLBinauralEffectSettings binauralEffectSettings;
+
+    IPLAudioBuffer inBuffer;
+    IPLAudioBuffer outBuffer;
 };

@@ -2,7 +2,16 @@
 #include "steamaudiomanager.h"
 #include <iostream>
 
-SteamAudioManager::SteamAudioManager() : context(nullptr), hrtf(nullptr), binauralEffect(nullptr)
+SteamAudioManager::SteamAudioManager() : 
+    context(nullptr), 
+    contextSettings({}), 
+    hrtf(nullptr), 
+    binauralEffect(nullptr),
+    binauralEffectSettings({}), 
+    audioSettings({}), 
+    hrtfSettings({}),
+    inBuffer({}),
+    outBuffer({})
 {
     std::cout << "SteamAudioManager constructor called" << std::endl;
 }
@@ -13,56 +22,22 @@ SteamAudioManager::~SteamAudioManager()
     CleanUp();
 }
 
-bool SteamAudioManager::Initialize()
+void SteamAudioManager::Initialize()
 {
-    std::cout << "Initializing Steam Audio..." << std::endl;
-    
-    // Initialize context
-    IPLContextSettings contextSettings{};
     contextSettings.version = STEAMAUDIO_VERSION;
-    IPLerror error = iplContextCreate(&contextSettings, &context);
-    if(error != IPL_STATUS_SUCCESS)
-    {
-        std::cerr << "Failed to create Steam Audio Context." << std::endl;
-        return false;
-    }
-    std::cout << "Steam Audio context initialized successfully" << std::endl;
+    iplContextCreate(&contextSettings, &context);
 
-    // Set up audio settings
-    IPLAudioSettings audioSettings{};
     audioSettings.samplingRate = 44100;
     audioSettings.frameSize = 1024;
 
-    // Initialize HRTF
-    std::cout << "Initializing HRTF..." << std::endl;
-    IPLHRTFSettings hrtfSettings{};
     hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
+    hrtfSettings.volume = 1.0f;
 
-    error = iplHRTFCreate(context, &audioSettings, &hrtfSettings, &hrtf);
-    if (error != IPL_STATUS_SUCCESS)
-    {
-        std::cerr << "Failed to create HRTF." << std::endl;
-        iplContextRelease(&context);
-        return false;
-    }
-    std::cout << "HRTF initialized successfully" << std::endl;
+    iplHRTFCreate(context, &audioSettings, &hrtfSettings, &hrtf);
 
-    // Initialize binaural effect
-    std::cout << "Initializing binaural effect..." << std::endl;
-    IPLBinauralEffectSettings effectSettings{};
-    effectSettings.hrtf = hrtf;
+    binauralEffectSettings.hrtf = hrtf;
 
-    error = iplBinauralEffectCreate(context, &audioSettings, &effectSettings, &binauralEffect);
-    if (error != IPL_STATUS_SUCCESS)
-    {
-        std::cerr << "Failed to create binaural effect." << std::endl;
-        iplHRTFRelease(&hrtf);
-        iplContextRelease(&context);
-        return false;
-    }
-    std::cout << "Binaural effect initialized successfully" << std::endl;
-
-    return true;
+    iplBinauralEffectCreate(context, &audioSettings, &binauralEffectSettings, &binauralEffect);
 }
 
 void SteamAudioManager::CleanUp()
@@ -120,4 +95,35 @@ IPLSource SteamAudioManager::CreateSource()
         return nullptr;
     }
     return source;
+}
+
+std::vector<float> SteamAudioManager::ProcessAudio(std::vector<float>& vectorBuffer)
+{
+    // Prepare audio buffers
+    std::vector<float> inputBuffer(vectorBuffer.begin(), vectorBuffer.end());
+    std::vector<float> outputBuffer(inputBuffer.size() * 2);  // Stereo output
+
+    inBuffer.numChannels = 1;
+    inBuffer.numSamples = audioSettings.frameSize;
+    float* inData[] = { inputBuffer.data() };
+    inBuffer.data = inData;
+
+    iplAudioBufferAllocate(context, 2, audioSettings.frameSize, &outBuffer);
+
+    size_t numFrames = inputBuffer.size() / audioSettings.frameSize;
+    for (size_t frame = 0; frame < numFrames; ++frame)
+    {
+        IPLBinauralEffectParams params{};
+        params.direction = IPLVector3{-1.0f, 0.0f, 0.0f}; 
+        params.hrtf = hrtf;
+        params.interpolation = IPL_HRTFINTERPOLATION_NEAREST;
+        params.spatialBlend = 1.0f;
+
+        iplBinauralEffectApply(binauralEffect, &params, &inBuffer, &outBuffer);
+
+        iplAudioBufferInterleave(context, &outBuffer, outputBuffer.data() + frame * audioSettings.frameSize * 2);
+
+        inData[0] += audioSettings.frameSize;
+    }
+    return outputBuffer;
 }
